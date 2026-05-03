@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>YawLabs.Awsp.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
+    <PackageReference Include="xunit" Version="2.9.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\YawLabs.Awsp\YawLabs.Awsp.csproj" />
+  </ItemGroup>
+
+  <!--
+    The vector file lives at packages/awsp/test-vectors.json. The test project sits at
+    packages/awsp/reference/dotnet/test/YawLabs.Awsp.Tests, so the relative path from the
+    project file is ..\..\..\..\test-vectors.json. We copy it into the bin output so test
+    discovery does not depend on the build host's working directory.
+  -->
+  <ItemGroup>
+    <Content Include="..\..\..\..\test-vectors.json">
+      <Link>test-vectors.json</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

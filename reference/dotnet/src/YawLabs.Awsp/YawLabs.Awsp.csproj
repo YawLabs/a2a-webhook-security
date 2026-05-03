@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <PackageId>YawLabs.Awsp</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Yaw Labs</Authors>
+    <Company>Yaw Labs</Company>
+    <Description>Reference .NET implementation of AWSP -- the A2A Webhook Security Profile. HMAC-SHA256 signing, verification, key rotation, and replay protection for push-notification webhooks.</Description>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/YawLabs/a2a-webhook-security</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/YawLabs/a2a-webhook-security</RepositoryUrl>
+    <PackageTags>awsp;a2a;webhook;hmac;security</PackageTags>
+  </PropertyGroup>
+
+</Project>

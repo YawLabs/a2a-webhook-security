@@ -1,0 +1,23 @@
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Java / Maven
+target/
+
+# .NET
+**/bin/
+**/obj/
+
+# Go
+**/testdata/.cache/

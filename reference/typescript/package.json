@@ -1,0 +1,44 @@
+{
+  "name": "@yawlabs/awsp",
+  "version": "0.1.0",
+  "description": "Reference implementation of AWSP (A2A Webhook Security Profile) -- HMAC signing, replay protection, key rotation for A2A push-notification webhooks.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./headers": {
+      "types": "./dist/headers.d.ts",
+      "import": "./dist/headers.js"
+    }
+  },
+  "files": ["dist", "src", "LICENSE", "README.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "tsx --test test/*.test.ts",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write ."
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YawLabs/a2a-hosting.git",
+    "directory": "packages/awsp/reference/typescript"
+  },
+  "homepage": "https://github.com/YawLabs/a2a-hosting/tree/main/packages/awsp",
+  "bugs": {
+    "url": "https://github.com/YawLabs/a2a-hosting/issues"
+  },
+  "keywords": ["a2a", "agent-to-agent", "webhook", "hmac", "signature", "awsp", "security"]
+}

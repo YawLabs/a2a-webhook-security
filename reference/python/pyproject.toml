@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling>=1.18"]
+build-backend = "hatchling.build"
+
+[project]
+name = "yawlabs-awsp"
+version = "0.1.0"
+description = "Reference Python implementation of AWSP -- the A2A Webhook Security Profile."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Yaw Labs" }]
+requires-python = ">=3.10"
+keywords = ["awsp", "a2a", "webhook", "hmac", "signature"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: Apache Software License",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Security :: Cryptography",
+    "Typing :: Typed",
+]
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=7.0"]
+dev = ["pytest>=7.0", "mypy>=1.5"]
+
+[project.urls]
+Homepage = "https://github.com/YawLabs/a2a-hosting"
+Specification = "https://github.com/YawLabs/a2a-hosting/blob/main/packages/awsp/SPEC.md"
+
+[tool.hatch.build.targets.wheel]
+packages = ["yawlabs_awsp"]
+
+[tool.hatch.build.targets.sdist]
+include = ["yawlabs_awsp", "tests", "README.md", "LICENSE", "pyproject.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+files = ["yawlabs_awsp"]
