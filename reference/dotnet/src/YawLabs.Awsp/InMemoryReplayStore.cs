@@ -16,11 +16,20 @@ namespace YawLabs.Awsp;
 /// </summary>
 public sealed class InMemoryReplayStore : IReplayStore
 {
-    private const int EvictionThreshold = 4096;
+    // Eviction strategy: once the map crosses EvictionThreshold entries, sweep only every
+    // EvictionInterval-th call. Sweeping on every call past the threshold made the worst-case
+    // CheckAndStore O(n) per call -- a pathological pattern of monotonically-fresh nonces with
+    // no expirations made the whole store quadratic in steady state. The interval-throttled
+    // sweep keeps the amortized cost O(1) while still bounding map growth: between sweeps the
+    // map can grow by at most EvictionInterval entries, so the steady-state ceiling is
+    // EvictionThreshold + EvictionInterval.
+    private const int EvictionThreshold = 8192;
+    private const int EvictionInterval = 256;
 
     private readonly object _lock = new();
     private readonly Dictionary<string, long> _seen = new(StringComparer.Ordinal);
     private readonly Func<DateTimeOffset> _clock;
+    private long _callsSinceLastSweep;
 
     /// <summary>
     /// Create a store using <see cref="DateTimeOffset.UtcNow"/> as the clock.
@@ -79,8 +88,20 @@ public sealed class InMemoryReplayStore : IReplayStore
     {
         if (_seen.Count <= EvictionThreshold)
         {
+            // Reset the call counter so a future shrink-then-grow cycle does not sweep on the
+            // very first call past the threshold.
+            _callsSinceLastSweep = 0;
             return;
         }
+        // Throttled sweep: only walk the map every EvictionInterval-th call past threshold.
+        // This keeps amortized CheckAndStore cost O(1) instead of O(n) under sustained load.
+        _callsSinceLastSweep++;
+        if (_callsSinceLastSweep < EvictionInterval)
+        {
+            return;
+        }
+        _callsSinceLastSweep = 0;
+
         // O(n) sweep -- bounded because n is also bounded by the time window.
         var expired = new List<string>();
         foreach (var pair in _seen)

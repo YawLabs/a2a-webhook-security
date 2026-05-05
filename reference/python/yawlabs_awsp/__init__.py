@@ -25,6 +25,7 @@ from ._headers import (
 )
 from ._replay import InMemoryReplayStore, ReplayStore
 from ._signer import compute_v1, timing_safe_equal_hex
+from ._ssrf import SsrfBlockedError, SsrfBlockReason, assert_public_url
 
 __all__ = [
     "AwspError",
@@ -35,10 +36,13 @@ __all__ = [
     "ReplayStore",
     "SecretEntry",
     "SignedHeaders",
+    "SsrfBlockReason",
+    "SsrfBlockedError",
     "VerifyErrorReason",
     "VerifyFailure",
     "VerifyResult",
     "VerifySuccess",
+    "assert_public_url",
     "compute_v1",
     "parse_signature_header",
     "serialize_signature_header",
@@ -90,13 +94,14 @@ class VerifySuccess:
 class VerifyFailure:
     """Failed verify() result.
 
-    `message` is a human-readable diagnostic. NEVER include this in 401
-    response bodies; it can leak internal state. Use `reason` for the
-    response and `message` for logs only.
+    `reason` is the stable enum from SPEC.md section 9 -- emit it in 401
+    response bodies for cross-implementation interoperability. The
+    previous `message` field was removed in 0.2.0 to prevent accidental
+    leakage of internal state into responses; receivers that want
+    diagnostics should log at the call site instead.
     """
 
     reason: VerifyErrorReason
-    message: str
     ok: Literal[False] = False
 
 
@@ -246,9 +251,7 @@ def verify(
 
     raw_header = _lookup_header(headers, "X-A2A-Signature")
     if raw_header is None:
-        return VerifyFailure(
-            reason="malformed_header", message="missing X-A2A-Signature"
-        )
+        return VerifyFailure(reason="malformed_header")
 
     try:
         parsed = parse_signature_header(raw_header)
@@ -256,22 +259,20 @@ def verify(
         reason: VerifyErrorReason = (
             "unknown_algorithm" if err.reason == "unknown_algorithm" else "malformed_header"
         )
-        return VerifyFailure(reason=reason, message=str(err))
+        return VerifyFailure(reason=reason)
 
     current = now if now is not None else int(time.time())
     skew = current - parsed.timestamp
     if skew > replay_window_seconds:
-        return VerifyFailure(reason="stale", message=f"timestamp {skew}s old")
+        return VerifyFailure(reason="stale")
     if skew < -replay_window_seconds:
-        return VerifyFailure(reason="future", message=f"timestamp {-skew}s in the future")
+        return VerifyFailure(reason="future")
 
     # Filter candidate secrets by kid (required in v1).
     candidates = [s for s in secrets if s.kid == parsed.kid]
 
     if len(candidates) == 0:
-        return VerifyFailure(
-            reason="unknown_kid", message=f"no secret for kid={parsed.kid}"
-        )
+        return VerifyFailure(reason="unknown_kid")
 
     matched_kid: str | None = None
     for entry in candidates:
@@ -288,13 +289,13 @@ def verify(
             break
 
     if matched_kid is None:
-        return VerifyFailure(reason="bad_hmac", message="no signature matched")
+        return VerifyFailure(reason="bad_hmac")
 
     if replay_store is not None:
         ttl = replay_window_seconds + REPLAY_STORE_TTL_BUFFER_SECONDS
         fresh = replay_store.check_and_store(parsed.nonce, ttl)
         if not fresh:
-            return VerifyFailure(reason="replayed", message="nonce already seen")
+            return VerifyFailure(reason="replayed")
 
     return VerifySuccess(kid=matched_kid, timestamp=parsed.timestamp, nonce=parsed.nonce)
 

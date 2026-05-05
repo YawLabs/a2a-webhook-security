@@ -27,8 +27,8 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
-test = ["pytest>=7.0"]
-dev = ["pytest>=7.0", "mypy>=1.5"]
+test = ["pytest>=7.0", "hypothesis>=6.0"]
+dev = ["pytest>=7.0", "mypy>=1.5", "hypothesis>=6.0"]
 
 [project.urls]
 Homepage = "https://github.com/YawLabs/a2a-hosting"

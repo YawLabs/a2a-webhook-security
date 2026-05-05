@@ -7,7 +7,7 @@ HMAC-SHA256 signing + verification, key rotation, and replay protection for push
 - Zero runtime dependencies (Python stdlib only)
 - Python 3.10+
 - Apache-2.0 licensed
-- Conforms to AWSP v1; passes all 50 [test vectors](../../test-vectors.json)
+- Conforms to AWSP v1; passes all 50 [test vectors](../../test-vectors.json) plus adversarial parser fuzz (1000+ iterations of random and Hypothesis-generated inputs)
 
 ## Install
 
@@ -49,6 +49,61 @@ urllib.request.urlopen(req)
 - `X-A2A-Webhook-Id: <uuid>`
 - `X-A2A-Event-Type: <event_type>`
 - `X-A2A-Timestamp: <unix-seconds>`
+
+## SSRF defense (sender side)
+
+[SPEC.md section 10](../../SPEC.md) requires Senders to gate Receiver-supplied
+URLs before dispatch -- otherwise an attacker controlling the webhook
+configuration can point the URL at internal services
+(`http://169.254.169.254/`, RFC 1918, loopback) and have your Sender make
+the request on their behalf.
+
+`assert_public_url` resolves the URL's hostname, refuses any IP in the
+spec's blocklist (private, reserved, link-local, multicast, loopback --
+IPv4 and IPv6, including `::ffff:` IPv4-mapped variants), and returns a
+URL with the hostname rewritten to the resolved public IP. Connecting by
+IP defeats DNS-rebinding -- the IP we resolved is the IP we connect to.
+
+```python
+from urllib.parse import urlparse
+
+import requests  # or httpx
+
+from yawlabs_awsp import SsrfBlockedError, assert_public_url, sign
+
+try:
+    safe_url = assert_public_url(receiver_url)  # https only by default
+except SsrfBlockedError as err:
+    # err.reason is one of: private_ip, invalid_url, dns_failure, scheme_not_allowed
+    # err.url, err.resolved_ip populated for logging / metrics
+    raise
+
+headers = sign(secret=SECRET, key_id="k_2026_05", body=body, event_type="task.completed")
+
+# Connect by IP, but preserve the original Host header so TLS SNI and
+# HTTP virtual hosting still work.
+original_host = urlparse(receiver_url).netloc
+requests.post(
+    safe_url,
+    data=body,
+    headers={"Host": original_host, "Content-Type": "application/json", **headers},
+)
+```
+
+Allow `http://` only on internal test fixtures (CI, local-dev receivers):
+
+```python
+safe_url = assert_public_url(receiver_url, allow_http=True)
+```
+
+For testing, inject a stub resolver instead of hitting DNS:
+
+```python
+safe = assert_public_url(
+    "https://example.com/webhook",
+    resolve=lambda host: ["93.184.216.34"],
+)
+```
 
 ## Verify an incoming webhook (receiver side)
 

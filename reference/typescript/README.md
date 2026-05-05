@@ -4,10 +4,12 @@ Reference TypeScript implementation of [AWSP](../../SPEC.md) -- the A2A Webhook 
 
 HMAC-SHA256 signing + verification, key rotation, replay protection, and SSRF defense for push-notification webhooks delivered between A2A agents.
 
-- Zero runtime dependencies (Node built-in `crypto` only)
+- Zero runtime dependencies (Node built-in `crypto`, `dns`, `net` only)
 - Works in Node 18+ (uses `node:crypto`, `Buffer.from(s, 'base64url')`)
 - Apache-2.0 licensed
-- Conforms to AWSP v1; passes all 50 [test vectors](../../test-vectors.json)
+- Conforms to AWSP v1; passes all 50 [test vectors](../../test-vectors.json) plus
+  ~200 additional adversarial parser fuzz cases and the full SPEC.md section 10
+  SSRF blocklist
 
 ## Install
 
@@ -43,6 +45,74 @@ await fetch(receiverUrl, {
 - `X-A2A-Webhook-Id: <uuid>`
 - `X-A2A-Event-Type: <eventType>`
 - `X-A2A-Timestamp: <unix-seconds>`
+
+## Sender-side SSRF defense
+
+SPEC.md section 10 requires Senders to refuse Receiver-supplied URLs that
+resolve to private, reserved, link-local, multicast, or loopback addresses
+(both IPv4 and IPv6, including IPv4-mapped IPv6 like `::ffff:127.0.0.1`).
+Use `assertPublicUrl` before every webhook delivery:
+
+```ts
+import { assertPublicUrl, sign, SsrfBlockedError } from '@yawlabs/awsp';
+
+async function deliver(receiverUrl: string, body: Uint8Array, secret: Uint8Array) {
+  let safeUrl: URL;
+  try {
+    safeUrl = await assertPublicUrl(receiverUrl);
+    // safeUrl.hostname is rewritten to the resolved public IP -- this is the
+    // DNS-rebinding defense. The HTTP client connects to that IP, not to the
+    // hostname (which a hostile DNS server could re-resolve to a private IP
+    // between this check and the actual connect).
+  } catch (err) {
+    if (err instanceof SsrfBlockedError) {
+      // err.reason is one of: private_ip, invalid_url, dns_failure, scheme_not_allowed
+      // err.url is the original input; err.resolvedIp is set when reason is private_ip
+      throw new Error(`refused to deliver to ${err.url}: ${err.reason}`);
+    }
+    throw err;
+  }
+
+  const headers = sign({
+    secret,
+    keyId: 'k_2026_05',
+    body,
+    eventType: 'task.completed',
+  });
+
+  await fetch(safeUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body,
+    redirect: 'error', // SPEC.md section 10: deny redirects by default
+  });
+}
+```
+
+`assertPublicUrl` rejects:
+
+- Non-HTTPS schemes (HTTP only with `allowHttp: true` for explicit operator opt-in)
+- Hostnames that resolve to any IP in SPEC.md section 10's blocklist
+- Hostnames whose resolution returns ANY private IP, even alongside public IPs
+- Bare invalid URL strings (parse failures)
+- DNS lookup failures
+
+For tests, inject a stub resolver:
+
+```ts
+await assertPublicUrl('https://example.com/', {
+  resolve: async () => ['8.8.8.8'], // skip real DNS
+});
+```
+
+A note on TLS / SNI: rewriting the URL hostname to an IP literal means `fetch`
+will use the IP for both the connect and the SNI. Most TLS servers will not
+present a certificate for an IP literal, so production callers using
+hostname-based TLS need to send the IP for the connect but the original
+hostname for SNI. Node's built-in `fetch` doesn't expose that split; for
+production multi-hostname senders, prefer `undici.Agent` with a custom
+`connect` hook (or `node:https` directly) so you can connect to the resolved
+IP while keeping the SNI / Host header on the original hostname.
 
 ## Verify an incoming webhook (receiver side)
 

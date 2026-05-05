@@ -95,15 +95,15 @@ func TestParseSignatureHeaderMissingFields(t *testing.T) {
 
 func TestParseSignatureHeaderBadShapes(t *testing.T) {
 	cases := []string{
-		"this is not a signature header",                                   // garbage
-		"t=,v1=" + sampleSig() + ",n=A,kid=k",                              // empty value
-		"=value,v1=" + sampleSig() + ",n=A,kid=k",                          // empty key
-		"t=-1,v1=" + sampleSig() + ",n=A,kid=k",                            // negative timestamp
-		"t=abc,v1=" + sampleSig() + ",n=A,kid=k",                           // non-decimal timestamp
-		"t=1,v1=" + strings.ToUpper(sampleSig()) + ",n=A,kid=k",            // uppercase hex
-		"t=1,v1=" + sampleSig()[:63] + ",n=A,kid=k",                        // wrong-length sig
-		"t=1,v1=" + sampleSig() + ",n=$$$,kid=k",                           // bad nonce char
-		"t=1,v1=" + sampleSig() + ",n=A,kid=" + strings.Repeat("x", 200),   // kid too long
+		"this is not a signature header",                                 // garbage
+		"t=,v1=" + sampleSig() + ",n=A,kid=k",                            // empty value
+		"=value,v1=" + sampleSig() + ",n=A,kid=k",                        // empty key
+		"t=-1,v1=" + sampleSig() + ",n=A,kid=k",                          // negative timestamp
+		"t=abc,v1=" + sampleSig() + ",n=A,kid=k",                         // non-decimal timestamp
+		"t=1,v1=" + strings.ToUpper(sampleSig()) + ",n=A,kid=k",          // uppercase hex
+		"t=1,v1=" + sampleSig()[:63] + ",n=A,kid=k",                      // wrong-length sig
+		"t=1,v1=" + sampleSig() + ",n=$$$,kid=k",                         // bad nonce char
+		"t=1,v1=" + sampleSig() + ",n=A,kid=" + strings.Repeat("x", 200), // kid too long
 	}
 	for _, raw := range cases {
 		raw := raw
@@ -117,9 +117,9 @@ func TestParseSignatureHeaderBadShapes(t *testing.T) {
 
 func TestParseSignatureHeaderDuplicates(t *testing.T) {
 	cases := []string{
-		"t=1,t=2,v1=" + sampleSig() + ",n=A,kid=k",               // dup t=
-		"t=1,v1=" + sampleSig() + ",n=A,n=B,kid=k",               // dup n=
-		"t=1,v1=" + sampleSig() + ",n=A,kid=k,kid=other",         // dup kid=
+		"t=1,t=2,v1=" + sampleSig() + ",n=A,kid=k",       // dup t=
+		"t=1,v1=" + sampleSig() + ",n=A,n=B,kid=k",       // dup n=
+		"t=1,v1=" + sampleSig() + ",n=A,kid=k,kid=other", // dup kid=
 	}
 	for _, raw := range cases {
 		raw := raw

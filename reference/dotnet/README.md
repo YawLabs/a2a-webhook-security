@@ -5,9 +5,9 @@ Reference .NET implementation of [AWSP](../../SPEC.md) -- the A2A Webhook Securi
 HMAC-SHA256 signing + verification, key rotation, and replay protection for push-notification webhooks delivered between A2A agents.
 
 - Target framework: `net8.0`
-- Zero runtime dependencies (BCL only -- `System.Security.Cryptography.HMACSHA256`, `CryptographicOperations.FixedTimeEquals`, etc.)
+- Zero runtime dependencies (BCL only -- `System.Security.Cryptography.HMACSHA256`, `CryptographicOperations.FixedTimeEquals`, `System.Net.Sockets.Dns`, etc.)
 - Apache-2.0 licensed
-- Conforms to AWSP v1; passes all 50 [test vectors](../../test-vectors.json)
+- Conforms to AWSP v1; passes all 50 [test vectors](../../test-vectors.json) plus an adversarial / fuzz suite for the header parser
 
 ## Install
 
@@ -168,6 +168,56 @@ while (listener.IsListening)
 }
 ```
 
+### Sender-side SSRF defense
+
+A Receiver supplies its webhook URL during configuration. Without active defense, a hostile configuration call could point that URL at internal hosts (`http://169.254.169.254/`, `http://10.0.0.1/`, `http://localhost:5432/`) and trick your Sender into making requests on its behalf.
+
+`Ssrf.AssertPublicUrlAsync` resolves the host, rejects any private / reserved / link-local / multicast / loopback address per [SPEC.md section 10](../../SPEC.md), and returns a URI rewritten to the resolved public IP literal so you connect by IP and defeat DNS-rebinding.
+
+```csharp
+using YawLabs.Awsp;
+
+try
+{
+    Uri safeUri = await Ssrf.AssertPublicUrlAsync(receiverConfiguredUrl);
+
+    // Connect by IP literal -- defeats DNS-rebinding between assert and connect.
+    var req = new HttpRequestMessage(HttpMethod.Post, safeUri)
+    {
+        Content = new ByteArrayContent(body),
+    };
+    // ... attach AWSP headers, send, etc.
+}
+catch (SsrfBlockedException ex)
+{
+    // ex.Reason: PrivateIp | InvalidUrl | DnsFailure | SchemeNotAllowed
+    // ex.Url:    the original input string
+    // ex.ResolvedIp: the address that triggered the block (null on pre-DNS failures)
+    logger.LogWarning("Refusing to deliver to {Url}: {Reason} ({Ip})", ex.Url, ex.Reason, ex.ResolvedIp);
+    throw;
+}
+```
+
+For Sender-internal test fixtures or explicit operator opt-in, `http://` can be permitted:
+
+```csharp
+Uri safeUri = await Ssrf.AssertPublicUrlAsync(
+    receiverConfiguredUrl,
+    new AssertPublicUrlOptions { AllowHttp = true });
+```
+
+The `Resolve` option lets you inject a custom DNS resolver -- handy for tests, or to enforce a specific resolver in production:
+
+```csharp
+var opts = new AssertPublicUrlOptions
+{
+    Resolve = (host, ct) => Dns.GetHostAddressesAsync(host, ct),
+};
+Uri safeUri = await Ssrf.AssertPublicUrlAsync(url, opts);
+```
+
+Body-size caps, redirect-follow refusal, and total request time are caller responsibilities -- configure them on `HttpClient` / `HttpClientHandler`.
+
 ### Custom replay store (Redis example)
 
 For multi-replica receivers, swap `InMemoryReplayStore` for a shared backing store. Below is a sketch using StackExchange.Redis -- the package is NOT a dependency of `YawLabs.Awsp`; install it in the application that needs it.
@@ -250,6 +300,28 @@ public interface IReplayStore
 }
 
 public sealed class InMemoryReplayStore : IReplayStore { /* ... */ }
+
+public static class Ssrf
+{
+    public static Task<Uri> AssertPublicUrlAsync(
+        string rawUrl,
+        AssertPublicUrlOptions? opts = null,
+        CancellationToken ct = default);
+}
+
+public class AssertPublicUrlOptions
+{
+    public bool AllowHttp { get; init; }
+    public Func<string, CancellationToken, Task<IPAddress[]>>? Resolve { get; init; }
+}
+
+public class SsrfBlockedException : Exception
+{
+    public enum SsrfReason { PrivateIp, InvalidUrl, DnsFailure, SchemeNotAllowed }
+    public SsrfReason Reason { get; }
+    public string Url { get; }
+    public string? ResolvedIp { get; }
+}
 ```
 
 `Reason` on a failed `VerifyResult` is one of the stable enum values from SPEC.md section 9:
@@ -265,6 +337,11 @@ dotnet test -c Release --no-build
 ```
 
 The test project loads `../../test-vectors.json` (copied into the test bin directory by an MSBuild `<Content Include>`). All 50 vectors are run via xUnit `[Theory] [ClassData(typeof(VectorData))]`.
+
+The test suite also includes:
+
+- `HeadersAdversarialTests` -- targeted [Theory] / [InlineData] cases plus ~1000 seeded fuzz iterations confirming the parser EITHER returns a spec-defined `VerifyResult` OR throws a documented exception type. Parser-bug exceptions (`NullReferenceException`, `IndexOutOfRangeException`, `ArgumentOutOfRangeException` from internal slicing, `FormatException` from internal hex/base64 decoders, `OverflowException`) MUST NOT leak from `Awsp.Verify`.
+- `SsrfTests` -- one test per IPv4 + IPv6 CIDR range from SPEC.md section 10, plus invalid URL, DNS failure, scheme rejection, and the `AllowHttp` opt-in.
 
 ## License
 

@@ -119,7 +119,7 @@ function assertVerifyResult(result: VerifyResult, v: Vector): void {
       assert.equal(
         result.reason,
         v.expected_verify.error,
-        `${v.name} expected reason=${v.expected_verify.error}, got ${result.reason}: ${result.message}`,
+        `${v.name} expected reason=${v.expected_verify.error}, got ${result.reason}`,
       );
     }
   }

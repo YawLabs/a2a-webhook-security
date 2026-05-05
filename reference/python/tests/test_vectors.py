@@ -113,12 +113,11 @@ def test_vector(v: dict[str, Any]) -> None:
     if expected == "ok":
         assert isinstance(result, VerifySuccess), (
             f"{v['name']} expected ok, got reason="
-            f"{getattr(result, 'reason', '?')} message="
-            f"{getattr(result, 'message', '?')}"
+            f"{getattr(result, 'reason', '?')}"
         )
     else:
         assert not result.ok, f"{v['name']} expected error, got ok"
         assert result.reason == expected["error"], (
             f"{v['name']} expected reason={expected['error']}, "
-            f"got {result.reason}: {getattr(result, 'message', '?')}"
+            f"got {result.reason}"
         )

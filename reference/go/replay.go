@@ -33,6 +33,22 @@ type ReplayStore interface {
 	CheckAndStore(configID string, nonce []byte, ttlSeconds int) (firstSeen bool, err error)
 }
 
+// evictThreshold is the map size above which we may sweep. Below this,
+// CheckAndStore is O(1). Above it, we sweep at most every evictStride
+// calls -- the amortized cost per call stays O(1) because n grows
+// proportionally to the steady-state arrival rate within the TTL window.
+//
+// Bound: in steady state, len(seen) is at most one TTL-window's worth
+// of arrivals. With the default replayWindow=300s and a 60s buffer
+// (ttl=360s), a Receiver doing 100 verifies/sec sees ~36000 entries
+// at peak before eviction kicks in -- well above evictThreshold, so
+// sweeps run on every evictStride'th call. At 10 verifies/sec, peak
+// is ~3600 -- below threshold, no sweep needed.
+const (
+	evictThreshold = 8192
+	evictStride    = 256
+)
+
 // InMemoryReplayStore is a simple ReplayStore for tests and single-replica
 // receivers. It is safe for concurrent use.
 //
@@ -40,9 +56,10 @@ type ReplayStore interface {
 // store; nonce state held in process memory does not survive restarts and
 // is not shared across pods.
 type InMemoryReplayStore struct {
-	mu    sync.Mutex
-	seen  map[string]time.Time
-	clock func() time.Time
+	mu        sync.Mutex
+	seen      map[string]time.Time
+	clock     func() time.Time
+	callCount uint64 // call counter for stride-based eviction; mod evictStride
 }
 
 // NewInMemoryReplayStore returns a fresh in-memory ReplayStore using the
@@ -71,6 +88,7 @@ func (s *InMemoryReplayStore) CheckAndStore(configID string, nonce []byte, ttlSe
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	s.callCount++
 	s.evictLocked(now)
 
 	if expiresAt, ok := s.seen[key]; ok && expiresAt.After(now) {
@@ -81,11 +99,16 @@ func (s *InMemoryReplayStore) CheckAndStore(configID string, nonce []byte, ttlSe
 	return true, nil
 }
 
-// evictLocked sweeps expired entries when the map gets large enough that
-// keeping them around would balloon memory. Cheap O(n) sweep -- n is bounded
-// by the time window in normal operation. Callers must hold s.mu.
+// evictLocked sweeps expired entries from the map. To keep CheckAndStore
+// amortized O(1), we only sweep every evictStride calls once the map has
+// grown past evictThreshold. The callCount modulo gate avoids the
+// pathological "sweep on every call past threshold" pattern under
+// sustained high load. Callers must hold s.mu.
 func (s *InMemoryReplayStore) evictLocked(now time.Time) {
-	if len(s.seen) <= 4096 {
+	if len(s.seen) <= evictThreshold {
+		return
+	}
+	if s.callCount%evictStride != 0 {
 		return
 	}
 	for k, exp := range s.seen {

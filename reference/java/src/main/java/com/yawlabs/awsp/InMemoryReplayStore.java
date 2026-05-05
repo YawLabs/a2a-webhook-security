@@ -8,6 +8,7 @@ import java.time.Clock;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
 
 /**
@@ -16,18 +17,31 @@ import java.util.function.LongSupplier;
  * should use Redis ({@code SET key NX EX}) or equivalent so replay state is
  * shared across nodes.
  *
- * <p>This implementation is thread-safe (via {@link ConcurrentHashMap}) but
- * its eviction sweep is best-effort -- it runs only when the map crosses an
- * internal size threshold. Memory use is bounded by the volume of distinct
- * nonces seen within {@code ttlSeconds}.
+ * <p>This implementation is thread-safe (via {@link ConcurrentHashMap}). Its
+ * eviction sweep is best-effort: above {@link #EVICT_THRESHOLD} entries the
+ * sweep runs at most once every {@link #EVICT_SWEEP_INTERVAL} calls (so the
+ * amortized per-call cost stays O(1) instead of O(n) once the map fills).
+ *
+ * <p>Bound on map size: at steady state the map holds at most
+ * {@code peak_arrival_rate * (ttlSeconds + EVICT_SWEEP_INTERVAL)} entries --
+ * the sweep window adds at most {@code EVICT_SWEEP_INTERVAL} extra entries
+ * past the natural TTL bound before eviction reclaims them.
  */
 public final class InMemoryReplayStore implements ReplayStore {
 
-    /** Map size threshold above which {@link #evict(long)} sweeps expired entries. */
-    private static final int EVICT_THRESHOLD = 4096;
+    /** Map size at or above which the eviction sweep is considered. */
+    private static final int EVICT_THRESHOLD = 8192;
+
+    /**
+     * Once above {@link #EVICT_THRESHOLD}, run the O(n) sweep at most once
+     * per this many calls. Cheap counter-modulo amortizes the sweep cost
+     * across the call stream.
+     */
+    private static final int EVICT_SWEEP_INTERVAL = 256;
 
     private final ConcurrentHashMap<String, Long> seen = new ConcurrentHashMap<>();
     private final LongSupplier clock;
+    private final AtomicLong callsSinceSweep = new AtomicLong();
 
     /** Construct with the system clock (unix-seconds resolution). */
     public InMemoryReplayStore() {
@@ -85,10 +99,21 @@ public final class InMemoryReplayStore implements ReplayStore {
     }
 
     private void evict(long now) {
-        if (seen.size() < EVICT_THRESHOLD) return;
-        // O(n) sweep -- only triggers above threshold, so amortized cost is
-        // bounded by throughput / threshold. For higher-throughput needs,
-        // wrap a TTL-aware data structure (Caffeine, etc.) instead.
+        if (seen.size() < EVICT_THRESHOLD) {
+            // Map is small. Reset the counter so the first sweep above the
+            // threshold runs immediately rather than after the modulo cycle.
+            callsSinceSweep.set(0);
+            return;
+        }
+        // O(n) sweep -- only runs once per EVICT_SWEEP_INTERVAL calls past
+        // the threshold, so amortized cost per call stays O(1). Memory is
+        // bounded by arrival rate x (ttl + EVICT_SWEEP_INTERVAL); for
+        // higher-throughput needs, wrap a TTL-aware data structure
+        // (Caffeine, etc.) instead.
+        long n = callsSinceSweep.getAndIncrement();
+        if (n % EVICT_SWEEP_INTERVAL != 0) {
+            return;
+        }
         Iterator<Map.Entry<String, Long>> it = seen.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry<String, Long> e = it.next();

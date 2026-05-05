@@ -287,9 +287,57 @@ public class RedisReplayStore implements ReplayStore {
 
 Memcached `add` and equivalents work the same way.
 
+## SSRF defense (sender side)
+
+SPEC.md section 10 requires senders to gate every receiver-supplied URL
+through a private-IP / reserved-range blocklist BEFORE connecting, so a
+hostile receiver configuration cannot redirect the sender at internal hosts
+(cloud IMDS, RFC1918 ranges, loopback, etc.). The reference helper is
+`com.yawlabs.awsp.Ssrf`:
+
+```java
+import com.yawlabs.awsp.Ssrf;
+
+import java.net.URI;
+
+Ssrf.Options opts = new Ssrf.Options();
+// opts.allowHttp = true;          // default false; set only for internal test fixtures
+// opts.resolver = customResolver; // default uses InetAddress.getAllByName
+
+try {
+    URI safe = Ssrf.assertPublicUrl(receiverWebhookUrl, opts);
+    // 'safe' has the host rewritten to the resolved public IP. Dial it
+    // literally; do NOT re-resolve the original hostname (DNS-rebinding
+    // defense per SPEC.md section 10 step 3).
+    httpClient.connect(safe);
+} catch (Ssrf.SsrfBlockedException e) {
+    // e.reason is one of: PRIVATE_IP, INVALID_URL, DNS_FAILURE, SCHEME_NOT_ALLOWED.
+    // e.url and e.resolvedIp give context for logging.
+    log.warn("rejected webhook URL: reason={} url={} resolved={}",
+        e.reason, e.url, e.resolvedIp);
+    throw e;
+}
+```
+
+The blocklist covers every IPv4 and IPv6 range listed in SPEC.md section 10
+(0/8, 10/8, 100.64/10, 127/8, 169.254/16, 172.16/12, 192.0.0/24, 192.0.2/24,
+192.168/16, 198.18/15, 198.51.100/24, 203.0.113/24, 224/4, 240/4,
+255.255.255.255/32; ::/128, ::1/128, ::ffff:0:0/96 unwrapped to its IPv4
+form, 64:ff9b::/96, 100::/64, 2001::/23, 2001:db8::/32, fc00::/7, fe80::/10,
+ff00::/8). Zero new dependencies -- CIDR matching uses `java.math.BigInteger`
+on the raw address bytes.
+
 ## Spec conformance
 
-This implementation is conformant with AWSP v1 if and only if all 50 vectors in `test-vectors.json` pass. The conformance suite is run as part of `mvn test` (parameterized via JUnit 5 `@MethodSource`).
+This implementation is conformant with AWSP v1 if and only if all 50 vectors
+in `test-vectors.json` pass. The conformance suite is run as part of
+`mvn test` (parameterized via JUnit 5 `@MethodSource`). Beyond the vector
+suite, the parser is hammered by `HeadersAdversarialTest` (truncations at
+every byte boundary, oversized inputs, duplicates, mixed case, control
+bytes, extreme integers, plus ~3000 fuzz iterations across three seedable
+strategies) -- the contract is that for any input the parser must EITHER
+return a valid result OR throw `Headers.ParseException`, never an unchecked
+crash.
 
 ## License
 

@@ -70,6 +70,80 @@ func sendWebhook(endpoint string, secret []byte, body []byte) error {
 for deterministic tests; defaults are `time.Now()`, 16 random bytes, and a
 fresh UUIDv4 respectively.
 
+## SSRF defense (Sender side)
+
+SPEC.md section 10 mandates that Senders resolve the Receiver-supplied URL
+and reject any address in a private, reserved, link-local, multicast, or
+loopback range BEFORE opening a connection. `AssertPublicURL` does that
+check and returns a `*url.URL` with `Host` rewritten to the resolved
+public IP -- connecting by IP defeats DNS-rebinding (the resolved IP is
+the connect target).
+
+```go
+package main
+
+import (
+    "context"
+    "errors"
+    "fmt"
+    "net/http"
+    "net/url"
+
+    awsp "github.com/yawlabs/awsp-go"
+)
+
+func sendWebhookSafely(ctx context.Context, rawURL string, body []byte) error {
+    safeURL, err := awsp.AssertPublicURL(ctx, rawURL, nil)
+    if err != nil {
+        var sse *awsp.SsrfBlockedError
+        if errors.As(err, &sse) {
+            return fmt.Errorf("refusing to send: %s (%s)", sse.Reason, sse.URL)
+        }
+        return err
+    }
+
+    // safeURL.Host is now an IP literal (with the original port preserved).
+    // The original hostname stays in rawURL for the Host header below.
+    originalURL, _ := url.Parse(rawURL)
+    req, _ := http.NewRequestWithContext(ctx, http.MethodPost, safeURL.String(), nil)
+    // Preserve the SNI / vhost: the connect target is the IP, but the
+    // server-facing Host header should still be the original hostname.
+    req.Host = originalURL.Host
+    // ... attach awsp.Sign headers, send.
+    _ = req
+    return nil
+}
+```
+
+Options:
+
+```go
+opts := &awsp.AssertPublicURLOptions{
+    AllowHTTP: true,                                     // dev / test fixtures only
+    Resolve:   func(ctx context.Context, host string) ([]string, error) {
+        return myCustomResolver.LookupHost(ctx, host)    // optional override
+    },
+}
+safeURL, err := awsp.AssertPublicURL(ctx, rawURL, opts)
+```
+
+Failures are typed:
+
+| `Reason`              | Sentinel                      | Meaning                                                      |
+|-----------------------|-------------------------------|--------------------------------------------------------------|
+| `invalid_url`         | `ErrSsrfInvalidURL`           | URL failed to parse or had no host.                          |
+| `scheme_not_allowed`  | `ErrSsrfSchemeNotAllowed`     | Not https (and not http with `AllowHTTP=true`).              |
+| `dns_failure`         | `ErrSsrfDNSFailure`           | Resolver errored or returned no addresses.                   |
+| `private_ip`          | `ErrSsrfPrivateIP`            | At least one resolved address is in a blocked range.         |
+
+```go
+var sse *awsp.SsrfBlockedError
+if errors.As(err, &sse) {
+    log.Printf("ssrf-blocked: reason=%s url=%s resolved=%s",
+        sse.Reason, sse.URL, sse.ResolvedIP)
+}
+```
+
 ## Verify (Receiver side, net/http)
 
 ```go
@@ -229,13 +303,22 @@ reason during rollout and rotation for dashboarding.
 ## Testing
 
 The conformance test runner reads `../../test-vectors.json` and asserts
-byte-for-byte equivalence on Sign and Verify outcomes for all 50 vectors:
+byte-for-byte equivalence on Sign and Verify outcomes for all 50 vectors.
+Adversarial parser coverage uses Go's native fuzz testing
+(`func FuzzParseSignatureHeader`) plus targeted truncation / oversized /
+duplicate-key tables in `headers_adversarial_test.go`.
 
 ```
-cd packages/awsp/reference/go
+cd reference/go
 go test ./... -v -count=1
 go vet ./...
+go test -fuzz=FuzzParseSignatureHeader -fuzztime=10s
 ```
+
+The fuzzer asserts that for ANY input, `parseSignatureHeader` either
+returns a valid `parsedHeader` whose fields satisfy the spec invariants,
+or returns one of the typed error sentinels -- never a panic, never a
+half-shaped struct.
 
 ## License
 

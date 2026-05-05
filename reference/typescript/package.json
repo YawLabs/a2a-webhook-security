@@ -16,7 +16,12 @@
       "import": "./dist/headers.js"
     }
   },
-  "files": ["dist", "src", "LICENSE", "README.md"],
+  "files": [
+    "dist",
+    "src",
+    "LICENSE",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "tsx --test test/*.test.ts",
@@ -27,18 +32,26 @@
     "node": ">=18"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.14",
     "@types/node": "^22.10.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/YawLabs/a2a-hosting.git",
-    "directory": "packages/awsp/reference/typescript"
+    "url": "git+https://github.com/YawLabs/a2a-webhook-security.git"
   },
-  "homepage": "https://github.com/YawLabs/a2a-hosting/tree/main/packages/awsp",
+  "homepage": "https://github.com/YawLabs/a2a-webhook-security",
   "bugs": {
-    "url": "https://github.com/YawLabs/a2a-hosting/issues"
+    "url": "https://github.com/YawLabs/a2a-webhook-security/issues"
   },
-  "keywords": ["a2a", "agent-to-agent", "webhook", "hmac", "signature", "awsp", "security"]
+  "keywords": [
+    "a2a",
+    "agent-to-agent",
+    "webhook",
+    "hmac",
+    "signature",
+    "awsp",
+    "security"
+  ]
 }

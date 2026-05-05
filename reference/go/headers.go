@@ -28,12 +28,12 @@ type parsedHeader struct {
 // Header parse error sentinels. The public-facing reason strings on
 // VerifyResult are derived from these.
 var (
-	errParseMalformed       = errors.New("awsp: malformed X-A2A-Signature header")
-	errParseUnknownAlgo     = errors.New("awsp: header carries no recognized signature version")
-	errParseMissingT        = errors.New("awsp: missing t= field")
-	errParseMissingNonce    = errors.New("awsp: missing n= field")
-	errParseMissingKid      = errors.New("awsp: missing kid= field")
-	errParseMissingSig      = errors.New("awsp: missing v1= field")
+	errParseMalformed    = errors.New("awsp: malformed X-A2A-Signature header")
+	errParseUnknownAlgo  = errors.New("awsp: header carries no recognized signature version")
+	errParseMissingT     = errors.New("awsp: missing t= field")
+	errParseMissingNonce = errors.New("awsp: missing n= field")
+	errParseMissingKid   = errors.New("awsp: missing kid= field")
+	errParseMissingSig   = errors.New("awsp: missing v1= field")
 )
 
 // maxHeaderLen is the cap recommended by the spec (section 5.1).
@@ -54,11 +54,11 @@ func parseSignatureHeader(raw string) (parsedHeader, error) {
 	}
 
 	var (
-		out             parsedHeader
-		sawTimestamp    bool
-		sawNonce        bool
-		sawKid          bool
-		sawUnknownAlgo  bool
+		out            parsedHeader
+		sawTimestamp   bool
+		sawNonce       bool
+		sawKid         bool
+		sawUnknownAlgo bool
 	)
 
 	for _, part := range strings.Split(raw, ",") {
