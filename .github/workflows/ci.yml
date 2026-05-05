@@ -1,0 +1,149 @@
+# AWSP -- A2A Webhook Security Profile
+# Continuous Integration: run every reference implementation's native test
+# runner against the canonical test-vectors.json on every push to main and
+# every pull_request targeting main.
+#
+# Design notes:
+#   * One job per language so failures are isolated and the job list reads
+#     as a conformance matrix at a glance. No `needs:` between jobs; they
+#     all run in parallel.
+#   * Ubuntu-latest runner everywhere -- the reference impls are pure-stdlib
+#     where possible, so OS variation buys us little vs the parallelism cost
+#     of a cross-OS matrix.
+#   * Action versions are pinned to a major tag (e.g. @v4) so a malicious
+#     or broken release of an action does not silently land in CI. We
+#     intentionally do not pin to a SHA -- the major tag is a reasonable
+#     middle ground for a public spec repo.
+#   * Each language job picks its own version matrix targeting the lowest
+#     supported runtime and the current stable. New majors get added when
+#     the reference impl declares support.
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref so a fast push does not waste
+# minutes on already-stale commits.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  typescript:
+    name: typescript (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 18 is the floor declared in package.json `engines.node`.
+        # 20 is the current LTS; bump to include 22 once the reference
+        # impl explicitly opts in.
+        node: ['18', '20']
+    defaults:
+      run:
+        working-directory: reference/typescript
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: reference/typescript/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+
+  python:
+    name: python (${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.10 is the floor in pyproject.toml `requires-python`.
+        # 3.11 / 3.12 are current; 3.13 is in classifiers but not in CI
+        # until the reference impl exercises a 3.13-only path.
+        python: ['3.10', '3.11', '3.12']
+    defaults:
+      run:
+        working-directory: reference/python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: reference/python/pyproject.toml
+      # `[dev]` is declared in pyproject.toml -- it pulls in pytest + mypy.
+      - run: pip install -e .[dev]
+      - run: pytest
+
+  go:
+    name: go (${{ matrix.go }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 1.22 is what go.mod declares; 1.23 is the current stable at the
+        # time of writing. Add new majors as they ship.
+        go: ['1.22', '1.23']
+    defaults:
+      run:
+        working-directory: reference/go
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+          # Reference impl has zero deps so no go.sum exists. Cache by
+          # go.mod instead -- setup-go accepts either as the key source.
+          cache-dependency-path: reference/go/go.mod
+      - run: go test ./...
+
+  java:
+    name: java (temurin ${{ matrix.java }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 17 is the source/target in pom.xml. Add 21 once the reference
+        # impl is verified against it (it currently is not exercised in
+        # the reference test suite).
+        java: ['17']
+    defaults:
+      run:
+        working-directory: reference/java
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: maven
+      # -B (batch mode) keeps the log readable in CI -- no progress bars.
+      - run: mvn -B test
+
+  dotnet:
+    name: dotnet (${{ matrix.dotnet }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # net8.0 is the TargetFramework in both csproj files.
+        dotnet: ['8.0.x']
+    defaults:
+      run:
+        working-directory: reference/dotnet
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ matrix.dotnet }}
+      - run: dotnet restore
+      - run: dotnet test --configuration Release --no-restore
