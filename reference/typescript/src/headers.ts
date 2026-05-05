@@ -92,7 +92,7 @@ export function parseSignatureHeader(raw: string): ParsedSignatureHeader {
       if (kid !== undefined) {
         throw new HeaderParseError('malformed_header', 'duplicate kid=');
       }
-      if (!/^[A-Za-z0-9._\-]{1,128}$/.test(value)) {
+      if (!/^[A-Za-z0-9._-]{1,128}$/.test(value)) {
         throw new HeaderParseError('malformed_header', 'bad kid');
       }
       kid = value;
