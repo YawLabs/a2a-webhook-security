@@ -11,19 +11,6 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const outPath = resolve(here, '..', '..', '..', 'test-vectors.json');
 
-function hex(bufOrString) {
-  if (typeof bufOrString === 'string') return Buffer.from(bufOrString, 'utf8').toString('hex');
-  return Buffer.from(bufOrString).toString('hex');
-}
-
-function bodyHexFromUtf8(s) {
-  return Buffer.from(s, 'utf8').toString('hex');
-}
-
-function bodyHexFromBytes(bytes) {
-  return Buffer.from(bytes).toString('hex');
-}
-
 function computeV1(secretBytes, timestamp, bodyBytes) {
   const tsBytes = Buffer.from(String(timestamp), 'ascii');
   const dot = Buffer.from('.', 'ascii');
