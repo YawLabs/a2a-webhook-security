@@ -4,11 +4,15 @@ An open spec and reference implementations for authenticating push-notification 
 
 Modeled on the proven Stripe-Signature pattern, adapted for inter-agent flows.
 
+**Repository:** [github.com/YawLabs/a2a-webhook-security](https://github.com/YawLabs/a2a-webhook-security)
+
 ## Documents
 
 - [SPEC.md](./SPEC.md) -- the v1 specification (publishable, no TBDs)
 - [THREAT_MODEL.md](./THREAT_MODEL.md) -- threats AWSP defends against and the residual risk
 - [GOVERNANCE.md](./GOVERNANCE.md) -- stewardship, change process, donation intent
+- [CONTRIBUTING.md](./CONTRIBUTING.md) -- how to contribute, run tests, add ports
+- [SECURITY.md](./SECURITY.md) -- vulnerability reporting and disclosure timeline
 - [CHANGELOG.md](./CHANGELOG.md) -- version history
 - [test-vectors.json](./test-vectors.json) -- 50 deterministic vectors all conforming implementations MUST pass
 
@@ -16,11 +20,11 @@ Modeled on the proven Stripe-Signature pattern, adapted for inter-agent flows.
 
 | Language   | Status   | Path / Package                                |
 |------------|----------|-----------------------------------------------|
-| TypeScript | Shipping | `@yawlabs/awsp` ([reference/typescript](./reference/typescript)) |
-| Python     | Planned  |                                               |
-| Go         | Planned  |                                               |
-| Java       | Planned  |                                               |
-| .NET       | Planned  |                                               |
+| TypeScript | Shipping | `@yawlabs/awsp` (npm) -- [reference/typescript](./reference/typescript) |
+| Python     | Shipping | `yawlabs-awsp` (PyPI) -- [reference/python](./reference/python) |
+| Go         | Shipping | `github.com/yawlabs/awsp-go` -- [reference/go](./reference/go) |
+| Java       | Shipping | `com.yawlabs:awsp` (Maven) -- [reference/java](./reference/java) |
+| .NET       | Shipping | `YawLabs.Awsp` (NuGet) -- [reference/dotnet](./reference/dotnet) |
 
 The TypeScript implementation is the canonical reference. Other-language ports MUST pass [`test-vectors.json`](./test-vectors.json) verbatim.
 
@@ -39,6 +43,8 @@ Yaw Labs publishes and maintains this spec at v1. We intend to donate stewardshi
 - Bug reports and clarification questions: open a GitHub issue.
 - Proposed changes to the spec: file an RFC-style issue first, then a PR. The change process and versioning rules are in [GOVERNANCE.md](./GOVERNANCE.md).
 - New language ports: open an issue describing the port; align with `test-vectors.json` before submitting.
+- Practical "how do I get started" -- test commands per port, conformance contract, style notes -- is in [CONTRIBUTING.md](./CONTRIBUTING.md).
+- Security disclosures: see [SECURITY.md](./SECURITY.md). Do not file security issues in public.
 
 ## Quick links
 

@@ -216,7 +216,7 @@ The `reason` field is a stable enum from the set:
 - `unknown_kid` -- kid did not match any of the Receiver's known keys.
 - `bad_hmac` -- one or more `v1=` values were well-formed but did not match the recomputed signature for any candidate secret.
 
-Including the `reason` is RECOMMENDED -- it enables Senders to dashboard root causes during rollout and rotation. Receivers operating in adversarial environments MAY collapse all failures to `bad_hmac` (or omit the field) at the cost of debuggability. The free-form `message` from the reference implementation MUST NOT be returned in the response body, since it can leak internal state.
+Including the `reason` is RECOMMENDED -- it enables Senders to dashboard root causes during rollout and rotation. Receivers operating in adversarial environments MAY collapse all failures to `bad_hmac` (or omit the field) at the cost of debuggability. Free-form diagnostic strings -- if any -- MUST NOT be returned in the response body, since they can leak internal state.
 
 For retired endpoints (the Receiver no longer accepts deliveries here):
 
@@ -273,13 +273,15 @@ Implementations are conformant to AWSP v1 if and only if all 50 vectors pass. Ne
 
 | Language   | Status   | Path / Package                                |
 |------------|----------|-----------------------------------------------|
-| TypeScript | Shipping | `@yawlabs/awsp` ([reference/typescript](./reference/typescript)) |
-| Python     | Planned  |                                               |
-| Go         | Planned  |                                               |
-| Java       | Planned  |                                               |
-| .NET       | Planned  |                                               |
+| TypeScript | Shipping | `@yawlabs/awsp` (npm) -- [reference/typescript](./reference/typescript) |
+| Python     | Shipping | `yawlabs-awsp` (PyPI) -- [reference/python](./reference/python) |
+| Go         | Shipping | `github.com/yawlabs/awsp-go` -- [reference/go](./reference/go) |
+| Java       | Shipping | `com.yawlabs:awsp` (Maven) -- [reference/java](./reference/java) |
+| .NET       | Shipping | `YawLabs.Awsp` (NuGet) -- [reference/dotnet](./reference/dotnet) |
 
 The TypeScript implementation is the canonical reference. Other-language ports MUST pass [`test-vectors.json`](./test-vectors.json) verbatim.
+
+All five reference implementations include a Sender-side SSRF helper (`assertPublicUrl` / `assert_public_url` / `AssertPublicURL` / `Ssrf.assertPublicUrl` / `Ssrf.AssertPublicUrlAsync`) implementing the IPv4 + IPv6 blocklist from section 10. Ports are dependency-free; SSRF gating uses each language's standard library.
 
 ## 13. License
 

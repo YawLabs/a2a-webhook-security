@@ -4,7 +4,7 @@
 
 AWSP is published and maintained by [Yaw Labs](https://yaw.labs) at v1. Until donation lands (see "Donation intent" below), Yaw Labs is the sole steward. In practice that means:
 
-- The specification source of truth is `packages/awsp/` in the [a2a-hosting](https://github.com/YawLabs/a2a-hosting) repository.
+- The specification source of truth is the [YawLabs/a2a-webhook-security](https://github.com/YawLabs/a2a-webhook-security) repository (`SPEC.md` at the root).
 - Yaw Labs reviews and merges all spec PRs.
 - Yaw Labs cuts spec releases (tags `awsp-spec-vX.Y.Z`) and coordinates reference-implementation releases.
 - All review and decision-making happens in public on GitHub. There is no private steering committee, mailing list, or out-of-band fork.
@@ -86,5 +86,5 @@ Discussion in issues and PRs follows the [Contributor Covenant](https://www.cont
 
 ## Reaching us
 
-- GitHub issues: [YawLabs/a2a-hosting](https://github.com/YawLabs/a2a-hosting/issues) -- tag with `awsp` for spec issues, `awsp-ts` for TypeScript reference issues.
-- Security disclosures: see the project security policy. Do not file security issues in public.
+- GitHub issues: [YawLabs/a2a-webhook-security](https://github.com/YawLabs/a2a-webhook-security/issues) -- tag with `spec` for spec issues, `ref-ts` / `ref-py` / `ref-go` / `ref-java` / `ref-dotnet` for reference-implementation issues.
+- Security disclosures: see [SECURITY.md](./SECURITY.md). Do not file security issues in public.
