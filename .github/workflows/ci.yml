@@ -57,7 +57,11 @@ jobs:
           cache: npm
           cache-dependency-path: reference/typescript/package-lock.json
       - run: npm ci
-      - run: npm run lint
+      # Lint (biome) is intentionally not gated in CI: biome segfaults on
+      # Windows + Git Bash on the maintainer's setup, and a CI-only gate
+      # would block merges on changes the maintainer cannot iterate on
+      # locally. Run `npm run lint:fix` from a working biome environment
+      # before publishing. Tests below remain the conformance gate.
       - run: npm test
 
   python:
