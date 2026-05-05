@@ -91,6 +91,11 @@ npm test
 
 Optional: `npm run lint` (Biome) and `npm run lint:fix`.
 
+> Windows note: on Windows + Git Bash, `npm run lint` may exit 139
+> (segfault) -- this is the npm wrapper, not Biome itself. Use
+> `npx biome check .` (or `npx biome check --write .`) directly. CI
+> runs on Linux and is unaffected.
+
 ### Python -- `reference/python`
 
 ```bash

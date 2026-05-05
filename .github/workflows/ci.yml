@@ -35,6 +35,14 @@ concurrency:
 permissions:
   contents: read
 
+# Opt JavaScript actions onto Node.js 24 ahead of the June 2026 default
+# switch / Sept 2026 Node.js 20 removal. setup-node, setup-python,
+# setup-java, setup-go, setup-dotnet and checkout still ship Node 20
+# binaries on their @v4/@v5 tags; this env var asks the runner to host
+# them on Node 24 instead.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   typescript:
     name: typescript (node ${{ matrix.node }})
@@ -57,11 +65,7 @@ jobs:
           cache: npm
           cache-dependency-path: reference/typescript/package-lock.json
       - run: npm ci
-      # Lint (biome) is intentionally not gated in CI: biome segfaults on
-      # Windows + Git Bash on the maintainer's setup, and a CI-only gate
-      # would block merges on changes the maintainer cannot iterate on
-      # locally. Run `npm run lint:fix` from a working biome environment
-      # before publishing. Tests below remain the conformance gate.
+      - run: npm run lint
       - run: npm test
 
   python:

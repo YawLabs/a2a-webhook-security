@@ -31,6 +31,11 @@ permissions:
   # npm uses to attach the SLSA provenance attestation.
   id-token: write
 
+# Opt JavaScript actions onto Node.js 24 ahead of the June 2026 default
+# switch / Sept 2026 Node.js 20 removal.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   publish-typescript:
     name: publish @yawlabs/awsp to npm
