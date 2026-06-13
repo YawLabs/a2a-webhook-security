@@ -98,10 +98,11 @@ for (const [range, ip] of IPV4_BLOCKED_SAMPLES) {
 // parses literals directly (e.g. to "helpfully" accept octal) must not silently
 // reintroduce a bypass without turning one of these green-to-red.
 //
-// Each of these is an alternate spelling of 127.0.0.1 (loopback) that some
-// resolvers / OS inet_aton() accept; if isPrivateIp ever started parsing them
-// as their canonical value it must still flag them private, and if it parses
-// them as something else it must still fail closed -- either way: returns true.
+// These are non-canonical IPv4 spellings some resolvers / OS inet_aton() accept.
+// Several decode to loopback (e.g. octal 0177.0.0.1 -> 127.0.0.1); others decode
+// elsewhere (e.g. octal 010.0.0.1 -> 8.0.0.1). node:net.isIPv4 rejects every one
+// of them, so each skips both range matchers and hits isPrivateIp's final
+// `return true` -- whichever way a future refactor might parse them, fail closed.
 
 const IPV4_NONCANONICAL_LITERALS: ReadonlyArray<readonly [string, string]> = [
   ['octal first octet', '010.0.0.1'],
