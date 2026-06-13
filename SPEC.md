@@ -165,8 +165,6 @@ Let `now` be the Receiver's wall clock at the moment of verification, and `t` th
 
 `replayWindow` defaults to **300 seconds**. Receivers MAY configure it as low as 60 seconds (tighter clock-skew requirement) or as high as 600 seconds. Values outside `[60, 600]` are non-conformant; Senders SHOULD assume Receivers run at the default.
 
-A `replayWindow` configured outside `[60, 600]` is a Receiver **configuration error**. A conformant Receiver MAY handle it either way: it MAY reject the configuration outright (e.g. raise or throw at construction time), OR it MAY treat the out-of-range value as a request-time failure and reject affected requests as `malformed_header`. Both behaviors are conformant; the spec does not mandate one over the other.
-
 ### 7.2 Nonce uniqueness
 
 The Receiver MUST maintain a store of recently-seen nonces. On verification:
