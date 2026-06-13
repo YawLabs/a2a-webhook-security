@@ -123,7 +123,9 @@ def _default_resolve(host: str) -> List[str]:
         # info is (family, type, proto, canonname, sockaddr); sockaddr[0]
         # is the IP for both AF_INET and AF_INET6 (IPv6 sockaddr is a
         # 4-tuple but [0] is still the address).
-        ip = info[4][0]
+        # sockaddr[0] is the address string for both AF_INET and AF_INET6;
+        # str() pins it to `str` (getaddrinfo's sockaddr is typed str | int).
+        ip = str(info[4][0])
         # Strip IPv6 zone identifier if any (e.g. "fe80::1%eth0").
         if "%" in ip:
             ip = ip.split("%", 1)[0]
@@ -159,8 +161,8 @@ def _check_ip(ip_str: str) -> Optional[str]:
                 return f"ipv4-mapped:{label}"
         return None
 
-    for net, label in _IPV6_BLOCKLIST:
-        if ip in net:
+    for net6, label in _IPV6_BLOCKLIST:
+        if ip in net6:
             return label
     return None
 
@@ -271,9 +273,17 @@ def assert_public_url(
     else:
         new_host = target_ip
 
+    # urlparse() is lazy: an out-of-range or non-numeric port only raises
+    # ValueError when parsed.port is accessed, not at parse time. Guard it
+    # so the read can't escape the documented SsrfBlockedError contract.
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise SsrfBlockedError("invalid_url", url, f"invalid port: {exc}") from exc
+
     new_netloc = new_host
-    if parsed.port is not None:
-        new_netloc = f"{new_host}:{parsed.port}"
+    if port is not None:
+        new_netloc = f"{new_host}:{port}"
     if parsed.username is not None:
         userinfo = parsed.username
         if parsed.password is not None:

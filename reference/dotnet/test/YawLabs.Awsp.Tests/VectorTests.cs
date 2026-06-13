@@ -67,7 +67,9 @@ public sealed class VectorTests
             replayStore = new InMemoryReplayStore(() => DateTimeOffset.FromUnixTimeSeconds(v.Now));
             foreach (string seed in v.ReplaySetup.SeedNonces)
             {
-                byte[] seedBytes = DecodeBase64UrlNoPadding(seed);
+                // Verify keys the replay store on the ASCII bytes of the nonce string (see
+                // Awsp.Verify), so seed with the same representation for dedupe to match.
+                byte[] seedBytes = System.Text.Encoding.ASCII.GetBytes(seed);
                 Assert.True(replayStore.CheckAndStore(string.Empty, seedBytes, 360));
             }
         }
@@ -128,26 +130,6 @@ public sealed class VectorTests
             if (c >= 'A' && c <= 'F') return c - 'A' + 10;
             throw new FormatException($"Invalid hex char '{c}'.");
         }
-    }
-
-    private static byte[] DecodeBase64UrlNoPadding(string input)
-    {
-        char[] buf = new char[input.Length + 4];
-        for (int i = 0; i < input.Length; i++)
-        {
-            buf[i] = input[i] switch
-            {
-                '-' => '+',
-                '_' => '/',
-                _ => input[i],
-            };
-        }
-        int padded = input.Length;
-        while (padded % 4 != 0)
-        {
-            buf[padded++] = '=';
-        }
-        return Convert.FromBase64CharArray(buf, 0, padded);
     }
 }
 

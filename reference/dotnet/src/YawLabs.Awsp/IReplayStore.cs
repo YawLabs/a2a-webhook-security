@@ -20,9 +20,11 @@ public interface IReplayStore
     /// <param name="configId">
     /// Optional namespace for nonces. AWSP nonce uniqueness is global to the receiver, but a
     /// store backing multiple unrelated tenants MAY use this as a key prefix. The reference
-    /// in-memory implementation ignores it.
+    /// in-memory implementation honors it when non-empty (prefixing the dedupe key with
+    /// <c>configId + ":"</c>) and uses the bare nonce key when it is empty -- which is what
+    /// <see cref="Awsp.Verify"/> always passes, since AWSP nonce uniqueness is global.
     /// </param>
-    /// <param name="nonce">Raw nonce bytes from the <c>n=</c> field (already base64url-decoded).</param>
+    /// <param name="nonce">The verbatim <c>n=</c> nonce as received, encoded to bytes as its ASCII text -- NOT base64url-decoded. See <see cref="Awsp.Verify"/>.</param>
     /// <param name="ttlSeconds">TTL for the recorded nonce.</param>
     /// <returns><c>true</c> if the nonce was unseen and is now recorded; <c>false</c> if it was a replay.</returns>
     bool CheckAndStore(string configId, byte[] nonce, int ttlSeconds);

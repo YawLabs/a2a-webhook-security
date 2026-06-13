@@ -100,7 +100,7 @@ Optional: `npm run lint` (Biome) and `npm run lint:fix`.
 
 ```bash
 cd reference/python
-pip install -e ".[test]"
+pip install -e ".[dev]"
 python -m pytest tests/ -v
 ```
 

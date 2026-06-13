@@ -746,5 +746,22 @@ const out = {
   vectors,
 };
 
-writeFileSync(outPath, `${JSON.stringify(out, null, 2)}\n`);
+// Pretty-print with 2-space indent, then collapse each `seed_nonces` array
+// back onto a single line so the written output is byte-identical to the
+// committed test-vectors.json (which renders these short arrays inline).
+// JSON.stringify(..., 2) expands every array multi-line; we re-join only the
+// seed_nonces arrays, preserving the inline `["A"]` / `["A", "B"]` shape.
+let json = JSON.stringify(out, null, 2);
+json = json.replace(
+  /("seed_nonces": )\[\n([\s\S]*?)\n\s*\]/g,
+  (_match, key, inner) => {
+    const items = inner
+      .split('\n')
+      .map((line) => line.trim())
+      .join(' ');
+    return `${key}[${items}]`;
+  },
+);
+
+writeFileSync(outPath, `${json}\n`);
 console.log(`wrote ${outPath} -- ${vectors.length} vectors`);

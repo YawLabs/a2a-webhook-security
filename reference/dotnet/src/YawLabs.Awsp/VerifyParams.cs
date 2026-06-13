@@ -16,9 +16,13 @@ namespace YawLabs.Awsp;
 /// </param>
 /// <param name="Body">Raw request body bytes -- the literal bytes received on the wire.</param>
 /// <param name="Secrets">
-/// All <c>(kid, secret)</c> entries the receiver currently accepts. Lookup is by exact match on
-/// <c>kid</c>. Multiple entries MAY share a kid during atomic in-place rotation; all matching
-/// entries are tried.
+/// The receiver's accepted <c>kid -> secret</c> table, keyed by exact match on <c>kid</c>. Because
+/// the type is <see cref="IReadOnlyDictionary{TKey, TValue}"/> there is exactly ONE secret per
+/// kid; <see cref="Awsp.Verify"/> fetches that single secret via a dictionary lookup. To rotate,
+/// publish the new secret under a DISTINCT kid and let senders cut over -- you cannot stage two
+/// secrets under the same kid here. This is intentionally narrower than the spec's
+/// list-of-<c>(kid, secret)</c> model (which lets multiple secrets share a kid and tries each);
+/// the other language ports implement that broader model, this reference does not.
 /// </param>
 /// <param name="ReplayWindowSeconds">
 /// Default 300. Spec allows 60-600. Values outside that range cause Verify to return a

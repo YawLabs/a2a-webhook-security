@@ -25,6 +25,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "tsx --test test/*.test.ts",
+    "generate-vectors": "node scripts/generate-vectors.mjs",
     "lint": "biome check .",
     "lint:fix": "biome check --write ."
   },
