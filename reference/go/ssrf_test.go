@@ -179,6 +179,36 @@ func TestAssertPublicURL_IPLiteralHostV6Blocked(t *testing.T) {
 	}
 }
 
+func TestAssertPublicURL_IPLiteralHostV6ZonedBlocked(t *testing.T) {
+	// Zone-scoped IPv6 literals (%25 is the URL-encoded %) must still be
+	// blocked. netip.Prefix.Contains returns false for any zoned address, so
+	// without zone-stripping in isBlockedAddr these would be misclassified as
+	// public. No resolver needed -- the literal host is checked directly.
+	cases := []struct {
+		name string
+		raw  string
+	}{
+		{"fe80::1%eth0 (link-local, zoned)", "https://[fe80::1%25eth0]/x"},
+		{"::1%lo0 (loopback, zoned)", "https://[::1%25lo0]/x"},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := AssertPublicURL(context.Background(), tc.raw, nil)
+			var sse *SsrfBlockedError
+			if !errors.As(err, &sse) {
+				t.Fatalf("err = %v, want *SsrfBlockedError", err)
+			}
+			if sse.Reason != "private_ip" {
+				t.Errorf("Reason = %q, want private_ip (got err %v)", sse.Reason, err)
+			}
+			if !errors.Is(err, ErrSsrfPrivateIP) {
+				t.Errorf("errors.Is(err, ErrSsrfPrivateIP) = false")
+			}
+		})
+	}
+}
+
 func TestAssertPublicURL_IPLiteralHostPublic(t *testing.T) {
 	out, err := AssertPublicURL(context.Background(), "https://8.8.8.8/x", nil)
 	if err != nil {

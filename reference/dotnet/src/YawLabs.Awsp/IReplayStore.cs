@@ -20,7 +20,9 @@ public interface IReplayStore
     /// <param name="configId">
     /// Optional namespace for nonces. AWSP nonce uniqueness is global to the receiver, but a
     /// store backing multiple unrelated tenants MAY use this as a key prefix. The reference
-    /// in-memory implementation ignores it.
+    /// in-memory implementation honors it when non-empty (prefixing the dedupe key with
+    /// <c>configId + ":"</c>) and uses the bare nonce key when it is empty -- which is what
+    /// <see cref="Awsp.Verify"/> always passes, since AWSP nonce uniqueness is global.
     /// </param>
     /// <param name="nonce">Raw nonce bytes from the <c>n=</c> field (already base64url-decoded).</param>
     /// <param name="ttlSeconds">TTL for the recorded nonce.</param>

@@ -221,10 +221,14 @@ func rewriteHost(u *url.URL, ip netip.Addr) *url.URL {
 // IPv4-mapped IPv6 (::ffff:0:0/96 -- the inner IPv4 is checked under
 // the IPv4 rules).
 func isBlockedAddr(addr netip.Addr) bool {
-	// Normalize IPv4-mapped IPv6 (::ffff:a.b.c.d) down to the underlying
-	// IPv4 -- per spec, "apply the IPv4 rules". Unmap returns the same
-	// addr unchanged for non-mapped values.
-	addr = addr.Unmap()
+	// Strip any IPv6 zone (scope) ID before classification. netip.Prefix.Contains
+	// returns false for ANY zone-scoped address, so a zoned literal like
+	// fe80::1%eth0 or ::1%lo0 would miss every Contains check below and be
+	// misclassified as public. Clearing the zone makes a zoned link-local /
+	// loopback / ULA classify by its base address. Then normalize IPv4-mapped
+	// IPv6 (::ffff:a.b.c.d) down to the underlying IPv4 -- per spec, "apply the
+	// IPv4 rules". Unmap returns the same addr unchanged for non-mapped values.
+	addr = addr.WithZone("").Unmap()
 
 	if addr.Is4() {
 		return isBlockedV4(addr)

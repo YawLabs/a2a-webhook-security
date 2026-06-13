@@ -259,6 +259,27 @@ def test_non_string_url_invalid() -> None:
     assert exc_info.value.reason == "invalid_url"
 
 
+def test_out_of_range_port_invalid_not_bare_valueerror() -> None:
+    # urlparse() is lazy: the out-of-range port only raises ValueError
+    # when parsed.port is read, which happens AFTER the blocklist check.
+    # A public IP from the resolver ensures we reach the port access.
+    with pytest.raises(SsrfBlockedError) as exc_info:
+        assert_public_url(
+            "https://example.com:99999/x",
+            resolve=_stub(["93.184.216.34"]),
+        )
+    assert exc_info.value.reason == "invalid_url"
+
+
+def test_non_numeric_port_invalid_not_bare_valueerror() -> None:
+    with pytest.raises(SsrfBlockedError) as exc_info:
+        assert_public_url(
+            "https://example.com:abc/x",
+            resolve=_stub(["93.184.216.34"]),
+        )
+    assert exc_info.value.reason == "invalid_url"
+
+
 # ---------------------------------------------------------------------------
 # DNS failure
 # ---------------------------------------------------------------------------

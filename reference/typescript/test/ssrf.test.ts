@@ -88,6 +88,40 @@ for (const [range, ip] of IPV4_BLOCKED_SAMPLES) {
 }
 
 // ---------------------------------------------------------------------------
+// Non-canonical IPv4 literals -- fail-closed guarantee
+// ---------------------------------------------------------------------------
+//
+// isPrivateIp's safety against octal/hex/integer/short-form SSRF bypasses rests
+// on node:net.isIPv4 returning false for any non-dotted-decimal form, so these
+// inputs skip both range matchers and hit isPrivateIp's final `return true`
+// (fail closed). These assertions pin that guarantee: a future refactor that
+// parses literals directly (e.g. to "helpfully" accept octal) must not silently
+// reintroduce a bypass without turning one of these green-to-red.
+//
+// Each of these is an alternate spelling of 127.0.0.1 (loopback) that some
+// resolvers / OS inet_aton() accept; if isPrivateIp ever started parsing them
+// as their canonical value it must still flag them private, and if it parses
+// them as something else it must still fail closed -- either way: returns true.
+
+const IPV4_NONCANONICAL_LITERALS: ReadonlyArray<readonly [string, string]> = [
+  ['octal first octet', '010.0.0.1'],
+  ['zero-padded octal octet', '0177.0.0.1'],
+  ['hex octet', '0x7f.0.0.1'],
+  ['bare 32-bit integer', '2130706433'],
+  ['short form (a.d)', '127.1'],
+];
+
+for (const [label, literal] of IPV4_NONCANONICAL_LITERALS) {
+  test(`ssrf: non-canonical IPv4 ${label} (${literal}) -- isPrivateIp fails closed (returns true)`, () => {
+    assert.equal(
+      isPrivateIp(literal),
+      true,
+      `${literal} (${label}) must be blocked: non-canonical forms must fail closed`,
+    );
+  });
+}
+
+// ---------------------------------------------------------------------------
 // IPv6 blocklist -- one PASS test per CIDR in SPEC.md section 10
 // ---------------------------------------------------------------------------
 

@@ -165,6 +165,8 @@ Let `now` be the Receiver's wall clock at the moment of verification, and `t` th
 
 `replayWindow` defaults to **300 seconds**. Receivers MAY configure it as low as 60 seconds (tighter clock-skew requirement) or as high as 600 seconds. Values outside `[60, 600]` are non-conformant; Senders SHOULD assume Receivers run at the default.
 
+A `replayWindow` configured outside `[60, 600]` is a Receiver **configuration error**. A conformant Receiver MAY handle it either way: it MAY reject the configuration outright (e.g. raise or throw at construction time), OR it MAY treat the out-of-range value as a request-time failure and reject affected requests as `malformed_header`. Both behaviors are conformant; the spec does not mandate one over the other.
+
 ### 7.2 Nonce uniqueness
 
 The Receiver MUST maintain a store of recently-seen nonces. On verification:
@@ -177,6 +179,8 @@ The 60-second buffer past `replayWindow` accommodates the case where two Receive
 The nonce check SHOULD run AFTER HMAC verification. Storing nonces for forged or wrong-key requests is wasteful and may itself enable nonce-storage exhaustion as a denial vector.
 
 Storage is implementation-defined. AWSP RECOMMENDS Redis `SET key NX EX <ttl>` (or equivalent) for multi-replica deployments. The reference TypeScript implementation includes `InMemoryReplayStore` for single-process / testing use.
+
+When the replay store is **shared** across heterogeneous Receiver implementations (e.g. a common Redis instance fronting receivers written in different languages), the store key MUST be derived from the verbatim `n=` nonce value as received -- its ASCII text -- and MUST NOT be derived from any decoded form (e.g. the raw bytes obtained by base64url-decoding the nonce). Keying on the as-received ASCII text guarantees that different-language Receivers compute identical keys for the same delivery and therefore deduplicate identically.
 
 Nonce uniqueness is **global to the Receiver**, not scoped per-`kid`. An attacker who has captured a delivery cannot replay it under a different `kid` claim (the HMAC under that `kid` won't validate anyway, but defense-in-depth is cheap here).
 

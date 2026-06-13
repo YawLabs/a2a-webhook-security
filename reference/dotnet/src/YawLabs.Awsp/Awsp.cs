@@ -152,7 +152,13 @@ public static class Awsp
         if (p.ReplayStore is not null)
         {
             int ttl = window + ReplayStoreTtlBufferSeconds;
-            byte[] nonceBytes = DecodeBase64UrlNoPadding(parsed.Nonce);
+            // Key the replay store on the ASCII bytes of the nonce STRING, not on its
+            // base64url-decoded value. The parser admits nonces whose length is congruent to
+            // 1 (mod 4) -- e.g. n=A (MinNonceLength=1) -- which is not a decodable base64url
+            // group, so decoding here would throw FormatException and break the no-leak contract
+            // the adversarial tests assert. ASCII bytes of the nonce text never throw, and this
+            // matches the other language ports, which key dedupe on the nonce text directly.
+            byte[] nonceBytes = Encoding.ASCII.GetBytes(parsed.Nonce);
             // configId is left empty -- AWSP nonce uniqueness is global to the receiver.
             // Multi-tenant deployments MAY supply a tenant-scoped configId via a custom store
             // wrapper; the reference store treats empty as "single namespace".
@@ -277,27 +283,6 @@ public static class Awsp
             };
         }
         return new string(buf[..written]);
-    }
-
-    private static byte[] DecodeBase64UrlNoPadding(string input)
-    {
-        // Translate base64url -> base64, then pad to a multiple of 4, then decode.
-        Span<char> buf = input.Length + 4 <= 1024 ? stackalloc char[input.Length + 4] : new char[input.Length + 4];
-        for (int i = 0; i < input.Length; i++)
-        {
-            buf[i] = input[i] switch
-            {
-                '-' => '+',
-                '_' => '/',
-                _ => input[i],
-            };
-        }
-        int padded = input.Length;
-        while (padded % 4 != 0)
-        {
-            buf[padded++] = '=';
-        }
-        return Convert.FromBase64CharArray(buf[..padded].ToArray(), 0, padded);
     }
 
     private static string ToLowerHex(byte[] bytes)

@@ -271,9 +271,17 @@ def assert_public_url(
     else:
         new_host = target_ip
 
+    # urlparse() is lazy: an out-of-range or non-numeric port only raises
+    # ValueError when parsed.port is accessed, not at parse time. Guard it
+    # so the read can't escape the documented SsrfBlockedError contract.
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise SsrfBlockedError("invalid_url", url, f"invalid port: {exc}") from exc
+
     new_netloc = new_host
-    if parsed.port is not None:
-        new_netloc = f"{new_host}:{parsed.port}"
+    if port is not None:
+        new_netloc = f"{new_host}:{port}"
     if parsed.username is not None:
         userinfo = parsed.username
         if parsed.password is not None:

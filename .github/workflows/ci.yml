@@ -67,6 +67,14 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
+      # Guard against test-vectors.json drift: re-run the deterministic
+      # generator and fail if its output differs from the committed file.
+      # The generator writes to the repo-root test-vectors.json, so the
+      # `git diff` check runs from there (path is relative to repo root).
+      - run: npm run generate-vectors
+      - name: Check test-vectors.json is up to date
+        working-directory: ${{ github.workspace }}
+        run: git diff --exit-code test-vectors.json
 
   python:
     name: python (${{ matrix.python }})
@@ -91,6 +99,9 @@ jobs:
       # `[dev]` is declared in pyproject.toml -- it pulls in pytest + mypy.
       - run: pip install -e .[dev]
       - run: pytest
+      # mypy is configured `strict = true` in pyproject.toml; run it so the
+      # type contract is actually enforced in CI, not merely declared.
+      - run: mypy yawlabs_awsp
 
   go:
     name: go (${{ matrix.go }})
