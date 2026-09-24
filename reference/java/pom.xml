@@ -15,7 +15,7 @@
         Java reference implementation of the A2A Webhook Security Profile (AWSP v1).
         Zero runtime dependencies. JDK 17+.
     </description>
-    <url>https://github.com/YawLabs/a2a-hosting/tree/main/packages/awsp</url>
+    <url>https://github.com/YawLabs/a2a-webhook-security</url>
 
     <licenses>
         <license>
