@@ -2,7 +2,7 @@
 
 ## Stewardship at v1
 
-AWSP is published and maintained by [Yaw Labs](https://yaw.labs) at v1. Until donation lands (see "Donation intent" below), Yaw Labs is the sole steward. In practice that means:
+AWSP is published and maintained by [Yaw Labs](https://yaw.sh) at v1. Until donation lands (see "Donation intent" below), Yaw Labs is the sole steward. In practice that means:
 
 - The specification source of truth is the [YawLabs/a2a-webhook-security](https://github.com/YawLabs/a2a-webhook-security) repository (`SPEC.md` at the root).
 - Yaw Labs reviews and merges all spec PRs.
