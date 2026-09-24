@@ -31,8 +31,8 @@ test = ["pytest>=7.0", "hypothesis>=6.0"]
 dev = ["pytest>=7.0", "mypy>=1.5", "hypothesis>=6.0"]
 
 [project.urls]
-Homepage = "https://github.com/YawLabs/a2a-hosting"
-Specification = "https://github.com/YawLabs/a2a-hosting/blob/main/packages/awsp/SPEC.md"
+Homepage = "https://github.com/YawLabs/a2a-webhook-security"
+Specification = "https://github.com/YawLabs/a2a-webhook-security/blob/main/SPEC.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["yawlabs_awsp"]
