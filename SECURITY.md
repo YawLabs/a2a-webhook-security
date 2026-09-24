@@ -9,9 +9,19 @@ timeline.
 
 **Do not open a public GitHub issue for security bugs.**
 
-Email security disclosures to **security@yaw.labs**. Encrypt with the Yaw Labs
-security PGP key on request if your report contains exploitation details that
-should not traverse plaintext mail.
+Report privately through either channel:
+
+- **GitHub private vulnerability reporting** (preferred):
+  [report a vulnerability](https://github.com/YawLabs/a2a-webhook-security/security/advisories/new).
+  The report is visible only to you and the maintainers until the advisory is
+  published, and sending it needs no email or encryption.
+- **Email**: contact@yaw.sh. If your report contains exploitation details that
+  should not traverse plaintext mail, email only a short summary and we will
+  move the details into a private GitHub security advisory.
+
+The one exception to the rule above: if neither channel works, open a public
+issue that asks only for a private contact -- no technical detail, not even the
+affected component -- and we will reach you from there.
 
 A useful report includes:
 
@@ -42,7 +52,9 @@ public disclosure.
   anonymous.
 
 If you have not heard back within the acknowledgment window above, please
-follow up. Mail loss is rare but real.
+follow up on the other channel -- email if you reported through GitHub, and
+vice versa. Notifications and mail do go astray; if the follow-up also goes
+unanswered, use the public-issue fallback under "Reporting a vulnerability".
 
 ## Supported versions
 
